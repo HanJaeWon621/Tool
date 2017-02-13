@@ -2913,7 +2913,7 @@ public class SwingTest2 extends JFrame {
                 ApiTest at = new ApiTest();
                 //sheetMap = at.readExcel2007(path);
                 setExcelTable(sheetMap);
-            }else if(ext2.toLowerCase().equals("txt")){
+            }else if(ext2.toLowerCase().equals("txt") || ext2.toLowerCase().equals("properties")){
                 fileRead(path);
             }else{
                 try{

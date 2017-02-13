@@ -1,6 +1,7 @@
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -14,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Properties;
 
 import oracle.jdbc.OracleCallableStatement;
 import oracle.jdbc.OracleTypes;
@@ -48,11 +50,34 @@ public class CodeMake {
     static String addStr1 = ""; //부가 변수1
 
     static String addStr2 = "i"; //부가 변수2
-
+    static String camel_yn="";
+    static String mybatis_yn="";
     private Connection conn = null;
-
+    static String preStr ="";
+    static String postStr="";
     public CodeMake() {
+    	Properties prop = new Properties();
 
+        try{
+            //FileInputStream fis = new FileInputStream(
+            //"C:/PMS/workspace/pmsweb/src/pms/pm/pma/p02/jvEbgt/cmd/db.properties");
+            FileInputStream fis = new FileInputStream("C:/CodeMakerFile/common.properties");
+            prop.load(fis);
+        }catch(Exception e){
+            // TODO Auto-generated catch block
+
+        }
+
+        camel_yn = prop.getProperty("camel_yn");
+        mybatis_yn = prop.getProperty("mybatis_yn");
+        
+        if(mybatis_yn.equals("Y")){
+    		preStr="#{";
+    		postStr="}";
+    	}else{
+    		preStr="";
+    		postStr="";
+    	}
     }
 
     public void setConn(Connection rconn){
@@ -120,14 +145,9 @@ public class CodeMake {
                 resultAL = selectObjList(a3);
             }else if(sel.equals("SelectDesc")){
                 resultAL = selectDesc(a2);
-            }else if(sel.equals("Select")){
-                resultAL = selectMake(a2);
-            }else if(sel.equals("Insert")){
-                resultAL = insertMake(a2);
-            }else if(sel.equals("Update")){
-                resultAL = updateMake(a2);
-            }else if(sel.equals("Delete")){
-                resultAL = deleteMake(a2);
+            }else if(sel.equals("Select") || sel.equals("Insert") || sel.equals("Update") || sel.equals("Delete")){
+                //resultAL = selectMake(a2);
+                resultAL = makeCRUD(sel, a2);
             }else if(sel.equals("ProcSave")){
                 resultAL = metaParamMake(a2, "prc", "save"); //프로시저 조회 파라미터 생성
             }else if(sel.equals("ProcTableTypeVar")){
@@ -203,7 +223,8 @@ public class CodeMake {
         ArrayList al = new ArrayList();
         String RN = "";
         String COL = "";
-        String VAL_COL = "";
+        String ORIG_VAL_COL = "";
+        String CAMEL_VAL_COL = "";
         String COMMENTS = "";
         String DATA_TYPE = "";
         String DATA_LENGTH = "";
@@ -217,8 +238,8 @@ public class CodeMake {
             StringBuffer sb = new StringBuffer();
             sb.append("     SELECT   ROWNUM RN, COLUMN_ID, UPPER(A.COLUMN_NAME) COL");
             sb.append("             ,REPLACE(RPAD(UPPER(A.COLUMN_NAME),20,'='),'=',' ') COL2 ");
-            sb
-                    .append("             ,REPLACE(RPAD(LOWER( SUBSTR(A.COLUMN_NAME,1,1)) || SUBSTR(REPLACE(INITCAP(REPLACE(A.COLUMN_NAME,'_',' ')),' '),2) ,20,'='),'=',' ') VAL_COL ");
+            sb.append("             ,LOWER(A.COLUMN_NAME) ORIG_VAL_COL ");
+            sb.append("             ,REPLACE(RPAD(LOWER( SUBSTR(A.COLUMN_NAME,1,1)) || SUBSTR(REPLACE(INITCAP(REPLACE(A.COLUMN_NAME,'_',' ')),' '),2) ,20,'='),'=',' ') CAMEL_VAL_COL ");
             sb
                     .append("             ,NVL(COMMENTS,' ') COMMENTS,DATA_TYPE,DATA_LENGTH,NVL(DATA_PRECISION,0) DATA_PRECISION ,NVL(DATA_SCALE,0) DATA_SCALE ,NULLABLE ");
             sb.append("             ,(SELECT DECODE(COUNT(*),0, 'N','Y') PK_YN ");
@@ -260,7 +281,8 @@ public class CodeMake {
 
                 RN             = rs.getString("RN");
                 COL            = rs.getString("COL");
-                VAL_COL        = rs.getString("VAL_COL");
+                CAMEL_VAL_COL  = rs.getString("CAMEL_VAL_COL");//카멜표기법
+                ORIG_VAL_COL   = rs.getString("ORIG_VAL_COL");
                 COMMENTS       = rs.getString("COMMENTS");
                 DATA_TYPE      = rs.getString("DATA_TYPE");
                 DATA_LENGTH    = rs.getString("DATA_LENGTH");
@@ -272,7 +294,8 @@ public class CodeMake {
                 PK_YN          = rs.getString("PK_YN");
                 hm.put("RN", RN);
                 hm.put("COL", COL);
-                hm.put("VAL_COL", VAL_COL);
+                hm.put("CAMEL_VAL_COL", CAMEL_VAL_COL);
+                hm.put("ORIG_VAL_COL", ORIG_VAL_COL);
                 hm.put("COMMENTS", COMMENTS);
                 hm.put("DATA_TYPE", DATA_TYPE);
                 hm.put("DATA_LENGTH", DATA_LENGTH);
@@ -285,15 +308,15 @@ public class CodeMake {
                 hm2 = new HashMap();
                 for(m = 1; m <= rsm.getColumnCount(); m++){
                     COL = rsm.getColumnName(m);
-                    VAL_COL = rs.getString(m);
-                    if(VAL_COL == null){
-                        VAL_COL = "";
+                    CAMEL_VAL_COL = rs.getString(m);
+                    if(CAMEL_VAL_COL == null){
+                    	CAMEL_VAL_COL = "";
                     }
                     if(r == 1){
                         titleMap.put(m, COL);
                     }
                     //hm.put(COL, COL_VAL);
-                    hm2.put(m, VAL_COL);
+                    hm2.put(m, CAMEL_VAL_COL);
                     ////System.out.println(COL + ":" + COL_VAL);
                     //System.out.println(COL + ":" + VAL_COL);
                 }
@@ -1222,7 +1245,8 @@ public class CodeMake {
     public static ArrayList selectDesc(ArrayList al){
         ArrayList resultAL = new ArrayList();
         String COL = "";
-        String VAL_COL = "";
+        String CAMEL_VAL_COL = "";
+        String ORIG_VAL_COL = "";
         String COMMENTS = "";
         String DATA_TYPE = "";
         String DATA_LENGTH = "";
@@ -1245,7 +1269,8 @@ public class CodeMake {
         for(int i = 0; i < cnt; i++){
             hm2 = (HashMap)al.get(i);
             COL = hm2.get("COL").toString();
-            VAL_COL = hm2.get("VAL_COL").toString();
+            CAMEL_VAL_COL = hm2.get("CAMEL_VAL_COL").toString();
+            ORIG_VAL_COL = hm2.get("ORIG_VAL_COL").toString();
             COMMENTS = hm2.get("COMMENTS").toString();
             DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
             DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
@@ -1270,7 +1295,8 @@ public class CodeMake {
     public static ArrayList selectDDL(ArrayList al){
         ArrayList resultAL = new ArrayList();
         String COL = "";
-        String VAL_COL = "";
+        String CAMEL_VAL_COL = "";
+        String ORIG_VAL_COL = "";
         String COMMENTS = "";
         String DATA_TYPE = "";
         String DATA_LENGTH = "";
@@ -1303,285 +1329,196 @@ public class CodeMake {
         resultAL = al;
         return resultAL;
     }
-
-    //Select문
-    public static ArrayList selectMake(ArrayList al){
+    
+    //CRUD문
+    public static ArrayList makeCRUD(String stsDiv, ArrayList al){
         ArrayList resultAL = new ArrayList();
-        String COL = "";
-        String VAL_COL = "";
-        String COMMENTS = "";
-        String DATA_TYPE = "";
-        String DATA_LENGTH = "";
-        String DATA_PRECISION = "";
-        String DATA_SCALE = "";
-        String NULLABLE = "";
-        String COLUMN_ID = "";
-        String PK_YN = "";
-        HashMap hm2 = new HashMap();
+        String COL				= "";
+        String VAL_COL 	= "";
+        String CAMEL_VAL_COL 	= "";
+        String ORIG_VAL_COL 	= "";
+        String COMMENTS 		= "";
+        String DATA_TYPE 		= "";
+        String DATA_LENGTH 		= "";
+        String DATA_PRECISION 	= "";
+        String DATA_SCALE 		= "";
+        String NULLABLE 		= "";
+        String COLUMN_ID 		= "";
+        String PK_YN 			= "";
+        
+        HashMap hm2 			= new HashMap();
         int cnt = al.size();
         int preCnt = cnt - 1;
         System.out.println("cnt.size()>>" + cnt);
-        for(int i = 0; i < cnt; i++){
-            hm2 = (HashMap)al.get(i);
-            COL = hm2.get("COL").toString();
-            VAL_COL = hm2.get("VAL_COL").toString();
-            COMMENTS = hm2.get("COMMENTS").toString();
-            DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
-            DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
-            DATA_SCALE = hm2.get("DATA_SCALE").toString();
-            NULLABLE = hm2.get("NULLABLE").toString();
-            COLUMN_ID = hm2.get("COLUMN_ID").toString();
-            ////System.out.println(COL +"\t" +VAL_COL +"\t" + COMMENTS +"\t" + DATA_LENGTH+"\t" + DATA_SCALE);
-            //Select문
-            if(i == 0){
+        
+        if(stsDiv.equals("SELECT")){
 
-                source = ("SELECT  " + COL + " --" + COMMENTS);
-                resultAL.add(source);
-            }else{
-                source = ("                 ," + COL + " --" + COMMENTS);
+        }else if(stsDiv.equals("Insert")){
+        	source = ("INSERT INTO " + tbName + "(");
+            resultAL.add(source);
+        }else if(stsDiv.equals("Update")){
+        	source = ("UPDATE " + tbName);
+            resultAL.add(source);
 
-                resultAL.add(source);
-                //resultAL.add(source);
-            }
+        }else if(stsDiv.equals("Delete")){
+        	source = ("DELETE FROM " + tbName);
+            resultAL.add(source);
         }
         for(int i = 0; i < cnt; i++){
-            hm2 = (HashMap)al.get(i);
-            COL = hm2.get("COL").toString();
-            VAL_COL = hm2.get("VAL_COL").toString();
-            COMMENTS = hm2.get("COMMENTS").toString();
-            DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
-            DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
-            DATA_SCALE = hm2.get("DATA_SCALE").toString();
-            NULLABLE = hm2.get("NULLABLE").toString();
-            COLUMN_ID = hm2.get("COLUMN_ID").toString();
-            PK_YN = hm2.get("PK_YN").toString();
-            //Select문
-            if(i == 0){
-                source = ("  FROM " + tbName);
-                //resultAL.add(source);
-                resultAL.add(source);
+            hm2 			= (HashMap)al.get(i);
+            COL 			= hm2.get("COL").toString();
+            CAMEL_VAL_COL 		= hm2.get("CAMEL_VAL_COL").toString();
+            ORIG_VAL_COL 		= hm2.get("ORIG_VAL_COL").toString();
+            COMMENTS 		= hm2.get("COMMENTS").toString();
+            DATA_LENGTH 	= hm2.get("DATA_LENGTH").toString();
+            DATA_PRECISION 	= hm2.get("DATA_PRECISION").toString();
+            DATA_SCALE 		= hm2.get("DATA_SCALE").toString();
+            NULLABLE 		= hm2.get("NULLABLE").toString();
+            COLUMN_ID 		= hm2.get("COLUMN_ID").toString();
+            if(camel_yn.equals("Y")){
+            	VAL_COL = CAMEL_VAL_COL;
+        	}else{
+        		VAL_COL = ORIG_VAL_COL;
+        	}
+            if(stsDiv.equals("Select")){
+	            //Select문
+            	
+	            if(i == 0){
+	
+	                source = ("SELECT  " + COL + " --" + COMMENTS);
+	                resultAL.add(source);
+	            }else{
+	                source = ("                 ," + COL + " --" + COMMENTS);
+	                resultAL.add(source);
+	            }
+            }else if(stsDiv.equals("Insert")){
+            	if(i == 0){
 
-                //source = (" WHERE " + COL + " = " + VAL_COL + " --" + COMMENTS);
-                source = (" WHERE " + COL + " = " + VAL_COL + " --" + COMMENTS);
-                //resultAL.add(source);
-                resultAL.add(source);
-
-            }else{
-                if(PK_YN.equals("Y")){
-                    source = ("   AND " + COL + " = " + VAL_COL + " --" + COMMENTS);
-                    //resultAL.add(source);
-                    resultAL.add(source);
-
-                }
-            }
-        }
-        return resultAL;
-    }
-
-    //Insert문 생성
-    public static ArrayList insertMake(ArrayList al){
-        ArrayList resultAL = new ArrayList();
-        String COL = "";
-        String VAL_COL = "";
-        String COMMENTS = "";
-        String DATA_TYPE = "";
-        String DATA_LENGTH = "";
-        String DATA_PRECISION = "";
-        String DATA_SCALE = "";
-        String NULLABLE = "";
-        String COLUMN_ID = "";
-
-        HashMap hm2 = new HashMap();
-        int cnt = al.size();
-        int preCnt = cnt - 1;
-
-        source = ("INSERT INTO " + tbName + "(");
-        resultAL.add(source);
-        //resultAL.add(source);
-
-        for(int i = 0; i < cnt; i++){
-            hm2 = (HashMap)al.get(i);
-            COL = hm2.get("COL").toString();
-            VAL_COL = hm2.get("VAL_COL").toString();
-            COMMENTS = hm2.get("COMMENTS").toString();
-            DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
-            DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
-            DATA_SCALE = hm2.get("DATA_SCALE").toString();
-            NULLABLE = hm2.get("NULLABLE").toString();
-            COLUMN_ID = hm2.get("COLUMN_ID").toString();
-            if(i == 0){
-
-                source = ("              " + COL);
-                resultAL.add(source);
-            }else{
-                source = ("              ," + COL);
-                resultAL.add(source);
-            }
-        }
-
-        source = (")VALUES( ");
-        resultAL.add(source);
-
-        for(int i = 0; i < cnt; i++){
-            hm2 = (HashMap)al.get(i);
-            COL = hm2.get("COL").toString();
-            VAL_COL = hm2.get("VAL_COL").toString();
-            COMMENTS = hm2.get("COMMENTS").toString();
-            DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
-            DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
-            DATA_SCALE = hm2.get("DATA_SCALE").toString();
-            NULLABLE = hm2.get("NULLABLE").toString();
-            COLUMN_ID = hm2.get("COLUMN_ID").toString();
-            //Select문
-            if(i == 0){
-                source = ("           " + VAL_COL);
-                resultAL.add(source);
-            }else{
-                if(COMMENTS.equals("최초등록일시") || COMMENTS.equals("최종수정일시")){
-                    source = ("           ,SYSDATE" + "              --" + COMMENTS);
+                    source = ("              " + COL);
                     resultAL.add(source);
                 }else{
-                    source = ("           ," + VAL_COL + " --" + COMMENTS);
+                    source = ("              ," + COL);
                     resultAL.add(source);
                 }
-            }
-
-            //resultAL.add(source);
-        }
-        source = (" )\n");
-        resultAL.add(source);
-        return resultAL;
-    }
-
-    //updae문 생성
-    public static ArrayList updateMake(ArrayList al){
-        ArrayList resultAL = new ArrayList();
-        String COL = "";
-        String VAL_COL = "";
-        String COMMENTS = "";
-        String DATA_TYPE = "";
-        String DATA_LENGTH = "";
-        String DATA_PRECISION = "";
-        String DATA_SCALE = "";
-        String NULLABLE = "";
-        String COLUMN_ID = "";
-
-        HashMap hm2 = new HashMap();
-        int cnt = al.size();
-        int preCnt = cnt - 1;
-
-        source = ("UPDATE " + tbName);
-        resultAL.add(source);
-        //resultAL.add(source);
-
-        int j = 0;
-        for(int i = 0; i < cnt; i++){
-            hm2 = (HashMap)al.get(i);
-            COL = hm2.get("COL").toString();
-            VAL_COL = hm2.get("VAL_COL").toString();
-            COMMENTS = hm2.get("COMMENTS").toString();
-            DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
-            DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
-            DATA_SCALE = hm2.get("DATA_SCALE").toString();
-            NULLABLE = hm2.get("NULLABLE").toString();
-            COLUMN_ID = hm2.get("COLUMN_ID").toString();
-            ////System.out.println(COL +"\t" +VAL_COL +"\t" + COMMENTS +"\t" + DATA_LENGTH+"\t" + DATA_SCALE);
-            //Select문
-            if(NULLABLE.equals("Y") && (!COL.equals("REGPSN_ID") && !COL.equals("FST_REG_DTM"))){
-
-                if(j == 0){
-                    source = ("   SET " + COL + " = " + VAL_COL + " --" + COMMENTS);
-                    resultAL.add(source);
-                }else{
-                    if(COL.equals("FNL_UPD_DTM")){
-                        source = ("      ," + COL + " = SYSDATE" + " --" + COMMENTS);
+            }else if(stsDiv.equals("Update")){
+            	 //Update문
+                if(//NULLABLE.equals("Y") && 
+                			(!COL.equals("REGPSN_ID") || !COL.equals("FST_REG_DTM"))){
+                	System.out.println("i>>>"+i);
+                	
+                	
+                    if(i == 0){
+                        source = ("   SET " + COL + " = " + preStr + VAL_COL + postStr +" 			--" + COMMENTS);
                         resultAL.add(source);
                     }else{
-                        source = ("      ," + COL + " = " + VAL_COL + " --" + COMMENTS);
+                        if(COL.equals("FNL_UPD_DTM")){
+                            source = ("      ," + COL + " = SYSDATE" + " 			--" + COMMENTS);
+                            resultAL.add(source);
+                        }else{
+                            source = ("      ," + COL + " = " + preStr + VAL_COL + postStr + " 		--" + COMMENTS);
+                            resultAL.add(source);
+                        }
+                    }
+                    //j++;
+                    //}
+                }
+            }else if(stsDiv.equals("Delete")){
+            	
+            }
+        }
+        
+        if(stsDiv.equals("Insert")){
+        	source = (")VALUES( ");
+            resultAL.add(source);
+        }
+        for(int j = 0; j < cnt; j++){
+            hm2 			= (HashMap)al.get(j);
+            COL 			= hm2.get("COL").toString();
+            CAMEL_VAL_COL 		= hm2.get("CAMEL_VAL_COL").toString();
+            ORIG_VAL_COL 		= hm2.get("ORIG_VAL_COL").toString();
+            COMMENTS 		= hm2.get("COMMENTS").toString();
+            DATA_LENGTH 	= hm2.get("DATA_LENGTH").toString();
+            DATA_PRECISION 	= hm2.get("DATA_PRECISION").toString();
+            DATA_SCALE 		= hm2.get("DATA_SCALE").toString();
+            NULLABLE 		= hm2.get("NULLABLE").toString();
+            COLUMN_ID 		= hm2.get("COLUMN_ID").toString();
+            PK_YN 			= hm2.get("PK_YN").toString();
+            //Select문
+            if(camel_yn.equals("Y")){
+            	VAL_COL = CAMEL_VAL_COL;
+        	}else{
+        		VAL_COL = ORIG_VAL_COL;
+        	}
+            if(stsDiv.equals("Select")){
+	            if(j == 0){
+	                source = ("  FROM " + tbName);
+	                resultAL.add(source);
+	                source = (" WHERE " + COL + " = " + preStr + VAL_COL + postStr + " --" + COMMENTS);
+	                resultAL.add(source);
+	
+	            }else{
+	                if(PK_YN.equals("Y")){
+	                    source = ("   AND " + COL + " = " + preStr + VAL_COL + postStr + " --" + COMMENTS);
+	                    resultAL.add(source);
+	
+	                }
+	            }
+            }else if(stsDiv.equals("Insert")){
+            	
+            	
+            	if(j == 0){
+                    source = ("           " + preStr + VAL_COL + postStr);
+                    resultAL.add(source);
+                }else{
+                    if(COMMENTS.equals("최초등록일시") || COMMENTS.equals("최종수정일시")){
+                        source = ("           ,SYSDATE" + "              --" + COMMENTS);
+                        resultAL.add(source);
+                    }else{
+                        source = ("           ," + preStr + VAL_COL + postStr + " --" + COMMENTS);
                         resultAL.add(source);
                     }
                 }
-                j++;
-                //}
-            }
-        }
-        for(int i = 0; i < cnt; i++){
-            hm2 = (HashMap)al.get(i);
-            COL = hm2.get("COL").toString();
-            VAL_COL = hm2.get("VAL_COL").toString();
-            COMMENTS = hm2.get("COMMENTS").toString();
-            DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
-            DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
-            DATA_SCALE = hm2.get("DATA_SCALE").toString();
-            NULLABLE = hm2.get("NULLABLE").toString();
-            COLUMN_ID = hm2.get("COLUMN_ID").toString();
-            //Select문
-            if(i == 0){
-                source = (" WHERE " + COL + " = " + VAL_COL + " --" + COMMENTS);
-                resultAL.add(source);
-            }else{
-                if(NULLABLE.equals("N")){
-                    source = ("   AND " + COL + " = " + VAL_COL + " --" + COMMENTS);
+            }else if(stsDiv.equals("Update")){
+            	//Update문
+            	
+                if(j == 0){
+                    source = (" WHERE " + COL + " = " + preStr + VAL_COL + postStr + " --" + COMMENTS);
                     resultAL.add(source);
+                }else{
+                    if(NULLABLE.equals("N")){
+                        source = ("   AND " + COL + " = " + preStr + VAL_COL + postStr + " --" + COMMENTS);
+                        resultAL.add(source);
+                    }
+                }
+            }else if(stsDiv.equals("Delete")){
+            	if(j == 0){
+                    //source = ("  FROM " + tbName);
+                    //resultAL.add(source);
+                    source = (" WHERE " + COL + " = " + preStr + VAL_COL + postStr + " --" + COMMENTS);
+                    resultAL.add(source);
+                }else{
+                    if(NULLABLE.equals("N")){
+                        source = ("   AND " + COL + " = " + preStr + VAL_COL + postStr + " --" + COMMENTS);
+                        resultAL.add(source);
+                    }
                 }
             }
         }
-
-        return resultAL;
-    }
-
-    //DELETE문 생성
-    public static ArrayList deleteMake(ArrayList al){
-        ArrayList resultAL = new ArrayList();
-        String COL = "";
-        String VAL_COL = "";
-        String COMMENTS = "";
-        String DATA_TYPE = "";
-        String DATA_LENGTH = "";
-        String DATA_PRECISION = "";
-        String DATA_SCALE = "";
-        String NULLABLE = "";
-        String COLUMN_ID = "";
-
-        HashMap hm2 = new HashMap();
-        int cnt = al.size();
-        int preCnt = cnt - 1;
-
-        source = ("DELETE FROM " + tbName);
-        resultAL.add(source);
-
-        for(int i = 0; i < cnt; i++){
-            hm2 = (HashMap)al.get(i);
-            COL = hm2.get("COL").toString();
-            VAL_COL = hm2.get("VAL_COL").toString();
-            COMMENTS = hm2.get("COMMENTS").toString();
-            DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
-            DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
-            DATA_SCALE = hm2.get("DATA_SCALE").toString();
-            NULLABLE = hm2.get("NULLABLE").toString();
-            COLUMN_ID = hm2.get("COLUMN_ID").toString();
-            //Select문
-            if(i == 0){
-                source = ("  FROM " + tbName);
-                resultAL.add(source);
-                source = (" WHERE " + COL + " = " + VAL_COL + " --" + COMMENTS);
-                resultAL.add(source);
-            }else{
-                if(NULLABLE.equals("N")){
-                    source = ("   AND " + COL + " = " + VAL_COL + " --" + COMMENTS);
-                    resultAL.add(source);
-                }
-            }
+        if(stsDiv.equals("Insert")){
+        	source = (" )\n");
+            resultAL.add(source);
         }
         return resultAL;
     }
-
+    
     //Insert문 프로시저 파라미터 생성
     public static ArrayList metaParamMake(ArrayList al, String tierDiv, String actDiv){
         ////System.out.println("테스트.....  ");
         ArrayList resultAL = new ArrayList();
         String COL = "";
         String VAL_COL = "";
+        String CAMEL_VAL_COL = "";
+        String ORIG_VAL_COL  = "";
         String COMMENTS = "";
         String DATA_TYPE = "";
         String DATA_LENGTH = "";
@@ -1817,7 +1754,8 @@ public class CodeMake {
                 for(int i = 0; i < cnt; i++){
                     hm2 = (HashMap)al.get(i);
                     COL = hm2.get("COL").toString();
-                    VAL_COL = hm2.get("VAL_COL").toString();
+                    CAMEL_VAL_COL = hm2.get("CAMEL_VAL_COL").toString();
+                    ORIG_VAL_COL = hm2.get("ORIG_VAL_COL").toString();
                     COMMENTS = hm2.get("COMMENTS").toString();
                     DATA_LENGTH = hm2.get("DATA_LENGTH").toString();
                     DATA_PRECISION = hm2.get("DATA_PRECISION").toString();
@@ -1825,6 +1763,11 @@ public class CodeMake {
                     NULLABLE = hm2.get("NULLABLE").toString();
                     COLUMN_ID = hm2.get("COLUMN_ID").toString();
                     //Select문
+                    if(camel_yn.equals("Y")){
+                    	VAL_COL = CAMEL_VAL_COL;
+                	}else{
+                		VAL_COL = ORIG_VAL_COL;
+                	}
                     if(i == 0){
                         source = (" p_duistate           IN VARCHAR2 --CUD구분 ");
                         resultAL.add(source);
