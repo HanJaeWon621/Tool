@@ -466,8 +466,9 @@ public class SwingTest2 extends JFrame {
 
         fileGridDtm = new DefaultTableModel();
         fileGridDtm.addColumn("파일", fileGridVector);
-        fileGridDtm.addColumn("일자", fileGridVector);
         fileGridDtm.addColumn("크기", fileGridVector);
+        fileGridDtm.addColumn("일자", fileGridVector);
+        fileGridDtm.addColumn("확장자", fileGridVector);
         fileGridTable = new JTable(fileGridDtm, fileGridTcm);
 
         objectContentGridDtm = new DefaultTableModel();
@@ -1598,7 +1599,6 @@ public class SwingTest2 extends JFrame {
         HashMap dirMap = new HashMap();
         for(int i = 0; i < resultList.size(); i++){
             dirMap = (HashMap)resultList.get(i);
-            //System.out.println(dirMap.get("NAME"));
         }
         //directoryGridDtm.setRowCount(0);
         setDirectoryGridTable(resultList, dirPath, upDir);
@@ -1611,7 +1611,6 @@ public class SwingTest2 extends JFrame {
         HashMap fileMap = new HashMap();
         for(int i = 0; i < resultList.size(); i++){
             fileMap = (HashMap)resultList.get(i);
-            //System.out.println(dirMap.get("NAME"));
         }
         setFileGridTable(resultList);
     }
@@ -1856,6 +1855,9 @@ public class SwingTest2 extends JFrame {
 
             String str = "";
             String fileName = null;
+            String fileSize = null;
+            String modifiedTime = null;
+            String fileExt = null;
             int dirListCnt = dirList.size();
             int j = 0;
             //while((data = in.readLine()) != null){
@@ -1864,10 +1866,14 @@ public class SwingTest2 extends JFrame {
 
                 HashMap hm2 = (HashMap)dirList.get(j);
                 fileName = hm2.get("NAME").toString();
-
+                fileSize = hm2.get("SIZE").toString();
+                modifiedTime = hm2.get("MODIFIED_TIME").toString();
+                fileExt = hm2.get("FILE_EXT").toString();
                 fileGridVector = new Vector();
                 fileGridVector.add(fileName);
-                fileGridVector.add(0);
+                fileGridVector.add(fileSize);
+                fileGridVector.add(modifiedTime);
+                fileGridVector.add(fileExt);
                 fileGridDtm.insertRow(j, fileGridVector);
             }
             fileGridTable.changeSelection(0, 0, false, false);
