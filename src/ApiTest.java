@@ -576,21 +576,25 @@ public class ApiTest {
 		Calendar cc = new GregorianCalendar();
 		File myFile3 = new File(upDirPath);
 		
-		//파일명 정렬
-		File[] fileList2 = myFile3.listFiles();
-        Arrays.sort(fileList2);
+		if(myFile3.listFiles()==null){
+			System.out.println("upDirPath>>>>"+upDirPath);
+		}
+		System.out.println("upDirPath>>>>"+upDirPath);
         
 		for (File s : myFile3.listFiles()) {
 			if (s.isDirectory()) {
 				dirMap = new HashMap();
 				dirMap.put("NAME", s.getName());
 				dirMap.put("UP_NAME", s.getParentFile());
-				dirMap.put("COUNT", getDirFileListCount(s.getPath()));
+				dirMap.put("DIR_COUNT", getDirFileListCount("DIR", s.getPath()));
+				dirMap.put("FILE_COUNT", getDirFileListCount("FILE", s.getPath()));
 				dirMap.put("UP_DIR", s.getParentFile().getParentFile());
 				// s.g
 				dirList.add(dirMap);
-				// System.out.println("aaa>>" + s.getParentFile());
 			} else {
+				//파일명 정렬
+				File[] fileList2 = myFile3.listFiles();
+		        Arrays.sort(fileList2);
 				fileMap = new HashMap();
 				fileMap.put("NAME", s.getName());
 				fileMap.put("SIZE", s.length());
@@ -605,16 +609,7 @@ public class ApiTest {
 				fileMap.put("MODIFIED_TIME", cD);
 
 				fileList.add(fileMap);
-				// System.out.println(">>"+cc.get(Calendar.YEAR) +
-				// (cc.get(Calendar.MONTH)+1)+ cc.get(Calendar.DAY_OF_MONTH));
-				// System.out.println(cD+"><");
-				// if(cD.equals("20141126")){
 
-				// if(Integer.parseInt(cD) >= 20141126){
-				// System.out.println("/pmsweb/src/kr/co/serveone/FCM/CSD/SPMS/"+s.getName());
-				System.out.println(upDirPath + "\\" + s.getName());
-				// }
-				// System.out.println("bbbb>>" + s.getParentFile());
 			}
 		}
 		
@@ -650,11 +645,12 @@ public class ApiTest {
                 dirMap = new HashMap();
                 dirMap.put("NAME", s.getName());
                 dirMap.put("UP_NAME", s.getParentFile());
-                dirMap.put("COUNT", getDirFileListCount(s.getPath()));
+                dirMap.put("DIR_COUNT", getDirFileListCount("DIR", s.getPath()));
+                dirMap.put("FILE_COUNT", getDirFileListCount("FILE", s.getPath()));
                 dirMap.put("UP_DIR", s.getParentFile().getParentFile());
                 //s.g
                 dirList.add(dirMap);
-                //System.out.println("aaa>>" + s.getParentFile());
+
             }else{
                 fileMap = new HashMap();
                 fileMap.put("NAME", s.getName());
@@ -664,11 +660,8 @@ public class ApiTest {
                         + cc.get(Calendar.DAY_OF_MONTH);
                 if(Integer.parseInt(cD) >= 20141126){
                     i = i + 1;
-                    //System.out.println("/pmsweb/src/kr/co/serveone/FCM/CSD/SPMS/"+s.getName());
                     String copySrcFrom = upDirPath2 + "\\" + s.getName().replaceAll(".java", ".class");
                     String copySrcTo = upDirPathTo + "\\" + s.getName().replaceAll(".java", ".class");
-                    System.out.println(i + ">" + copySrcFrom);
-                    //System.out.println(copySrcTo);
                     try{
                         fileCopy(copySrcFrom, copySrcTo);
                     }catch(IOException e){
@@ -676,7 +669,7 @@ public class ApiTest {
                         throw new Exception(e);
                     }
                 }
-                //System.out.println("bbbb>>" + s.getParentFile());
+
             }
         }
         if(fileDirDiv.equals("DIR")){
@@ -726,7 +719,7 @@ public class ApiTest {
         }
     }
 
-    public static String getDirFileListCount(String upDirPath){
+    public static String getDirFileListCount(String div, String upDirPath){
 
         //�뚯씪由ъ뒪�� �붾젆�좊━ 由ъ뒪��
         int dirCnt = 0;
@@ -735,16 +728,29 @@ public class ApiTest {
         for(File s : myFile3.listFiles()){
             if(s.isDirectory()){
                 dirCnt++;
-                //System.out.println("aaa>>" + s.getParentFile());
             }else{
                 fileCnt++;
             }
         }
-        String cnt = Integer.toString(dirCnt) + "(" + Integer.toString(fileCnt) + ")";
+        String cnt = "";
+        if(div.equals("DIR")){
+        	if(dirCnt==0){
+        		cnt="0";
+        	}else{
+        		cnt = Integer.toString(dirCnt);
+        	}
+        	
+        }else{
+        	if(fileCnt==0){
+        		cnt="0";
+        	}else{
+        		cnt = Integer.toString(fileCnt);
+        	}
+        }
 
         return cnt;
     }
-
+    
     /**
      * Input password.
      */
